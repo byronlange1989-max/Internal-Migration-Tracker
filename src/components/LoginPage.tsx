@@ -42,17 +42,36 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         }),
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        // Handle non-JSON responses (e.g. 404 HTML if backend was not rebuilt)
+      }
+
       if (!res.ok) {
-        throw new Error(data.error || 'Authentication failed. Check your username and password.');
+        if (res.status === 404) {
+          throw new Error('API route /api/auth/login not found (404). Please ensure the backend was rebuilt (`npm run build`) and restarted.');
+        }
+        throw new Error((data && data.error) || `Authentication failed (HTTP ${res.status}). Check your credentials.`);
+      }
+
+      if (!data || !data.token) {
+        throw new Error('Invalid authentication response from server.');
       }
 
       onLoginSuccess(data.user, data.token);
     } catch (err: any) {
-      setError(err.message || 'Unable to connect or invalid credentials.');
+      setError(err.message || 'Unable to connect to internal server.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleQuickFill = (user: string, pass: string) => {
+    setUsername(user);
+    setPassword(pass);
+    setError(null);
   };
 
   return (
@@ -172,21 +191,44 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </button>
 
             {showHint && (
-              <div className="mt-3 p-3 rounded-xl bg-slate-800/50 border border-slate-800 text-[11px] text-slate-400 space-y-1.5 animate-in fade-in duration-150">
+              <div className="mt-3 p-3.5 rounded-xl bg-slate-800/50 border border-slate-800 text-[11px] text-slate-400 space-y-2 animate-in fade-in duration-150">
                 <div className="flex items-center gap-1.5 text-slate-300 font-medium">
-                  <Info className="w-3 h-3 text-indigo-400" />
-                  <span>Initial Admin Logins:</span>
+                  <Info className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Default Master Logins (Click to Autofill):</span>
                 </div>
-                <div className="flex items-center justify-between font-mono bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800/60">
-                  <span className="text-slate-300">admin</span>
-                  <span className="text-slate-500">password: <span className="text-indigo-300">admin123</span></span>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between font-mono bg-slate-950/70 px-3 py-2 rounded-lg border border-slate-800/60">
+                    <div>
+                      <span className="text-slate-200 font-semibold">admin</span>
+                      <span className="text-slate-500 ml-2">password: <span className="text-indigo-300">admin123</span></span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickFill('admin', 'admin123')}
+                      className="px-2 py-0.5 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 text-[10px] font-sans border border-indigo-500/30 transition"
+                    >
+                      Fill
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between font-mono bg-slate-950/70 px-3 py-2 rounded-lg border border-slate-800/60">
+                    <div>
+                      <span className="text-slate-200 font-semibold">ironadmin</span>
+                      <span className="text-slate-500 ml-2">password: <span className="text-indigo-300">admin123</span></span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickFill('ironadmin', 'admin123')}
+                      className="px-2 py-0.5 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 text-[10px] font-sans border border-indigo-500/30 transition"
+                    >
+                      Fill
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between font-mono bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800/60">
-                  <span className="text-slate-300">ironadmin</span>
-                  <span className="text-slate-500">password: <span className="text-indigo-300">admin123</span></span>
-                </div>
-                <p className="text-[10px] text-slate-500 pt-1">
-                  Once logged in, administrators can add new team members from the <strong>Users</strong> menu in the top bar.
+                <p className="text-[10px] text-slate-500 pt-1 leading-relaxed">
+                  On the internal Linux server, you can also reset or list passwords anytime via terminal:
+                  <code className="block mt-1 p-1.5 bg-slate-950 text-indigo-300 rounded font-mono text-[10px]">
+                    npm run reset-password admin admin123
+                  </code>
                 </p>
               </div>
             )}

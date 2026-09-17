@@ -5,10 +5,10 @@
     "displayName": "System Administrator",
     "email": "admin@corp.local",
     "role": "admin",
-    "salt": "f1826345eb4e60ea2886670de1979e19",
-    "hash": "ef1035d546ca20deab09be21c4c070cb772fd10029dddacad806164462c281a6436f54c5a046c016860db31f4ac78cb5ef4d42edc86894896def1d6319e3dc65",
+    "salt": "4335b37f3df5f6b9562931d4a8ef579a",
+    "hash": "afee2b9e653f8c915be150b0a98e142bf4a641b465bf46ff58c690777cc07a3dd7d840b44c6ee9c059a68d139c4be0f64a4163456bb3db4a597d2a632d87745d",
     "createdAt": "2026-09-17T09:34:58.989Z",
-    "lastLogin": "2026-09-17T09:35:10.602Z"
+    "lastLogin": "2026-09-17T09:54:11.093Z"
   },
   {
     "id": "user-ironadmin",
@@ -16,9 +16,51 @@
     "displayName": "Iron Admin",
     "email": "ironadmin@corp.local",
     "role": "admin",
-    "salt": "79725263558967fd7b2ee8f4d5531c7b",
-    "hash": "64de17cc2028016e1a6715121c34d64fdad7d941b90bd0157512506f5f391a00fa632afe2e256d98cb1093c2e931d672d9d786e89d3ecde7780ce6fed7b81090",
+    "salt": "010bc1dc508d02d7ea317a98b336255c",
+    "hash": "d7a974592d73eff9ecff6d870c9c9845a98111a8537292a2ad05935f1ea9b9844dce2d77298a7758d9a8655777d29975f54d46f4e80bc824f2460d3a05b50972",
     "createdAt": "2026-09-17T09:34:58.989Z",
-    "lastLogin": null
+    "lastLogin": "2026-09-17T09:54:13.635Z"
+  },
+  {
+    "id": "user-1789637867491-7ajoy",
+    "username": "byron",
+    "displayName": "Byron Robertson",
+    "email": "byron@irontree.co.za",
+    "role": "admin",
+    "salt": "79872bc56ab8fffeb334e24dbe7e2494",
+    "hash": "685f27c6620ad407659c6b8fb2c1f3e1c74b7f493ef0771a3f9f966630c05f23e8b18548ed89e1c88c8d2d23030068420bd91238e455af5a65ecf1eee91c5ef9",
+    "createdAt": "2026-09-17T09:37:47.491Z",
+    "lastLogin": "2026-09-17T09:54:15.699Z"
+  },
+  {
+    "id": "user-1789637899321-0r5u7",
+    "username": "trent",
+    "displayName": "Trent Lester",
+    "email": "trent@irontree.co.za",
+    "role": "admin",
+    "salt": "d8e091f7b2ad3d8984642ab9a223d96d",
+    "hash": "02351343987866791d52eeed1d5f70803a159d730e8fdead5fb260ff26e0a8334d7550e9f35344371730e2f896b77d1b9e22c372ab38ac6e5d0fda560472e6ad",
+    "createdAt": "2026-09-17T09:38:19.321Z",
+    "lastLogin": "2026-09-17T09:54:19.141Z"
+  },
+  {
+    "id": "user-1789637925512-opvnh",
+    "username": "nick",
+    "displayName": "Nicholas Keene",
+    "role": "admin",
+    "salt": "1fc4c51eb3d3ec9156185f21d803bc99",
+    "hash": "53ee90511883d9c41559133dd578529e1e6f6a06d3357fa754da5fcd21c19c94f1ccd6a009c2516f1cc06b40b63e688ca783c5843aa0a4cd08082268cce087ed",
+    "createdAt": "2026-09-17T09:38:45.512Z",
+    "lastLogin": "2026-09-17T09:54:19.161Z"
+  },
+  {
+    "id": "user-1789637951782-k54dy",
+    "username": "byronl",
+    "displayName": "Byron Lange",
+    "role": "admin",
+    "salt": "345e515210137befa6eb61031748cb03",
+    "hash": "db0f603698f2791421b8a8c564ad9cf54dd2a612127cae99ef9beda2470217006d4502b0e154bc4a2a083437ee3b43ff6749927715202bf41e69a46e21325622",
+    "createdAt": "2026-09-17T09:39:11.782Z",
+    "lastLogin": "2026-09-17T09:54:17.374Z"
   }
 ]
