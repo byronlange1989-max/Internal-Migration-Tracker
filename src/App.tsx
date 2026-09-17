@@ -7,7 +7,7 @@ import { SpreadsheetModal } from './components/SpreadsheetModal';
 import { PythonHubModal } from './components/PythonHubModal';
 import { AddVmModal } from './components/AddVmModal';
 import { UserManagementModal } from './components/UserManagementModal';
-import { LoginModal } from './components/LoginModal';
+import { LoginPage } from './components/LoginPage';
 import { MigrationVM, MigrationStats, MigrationLog, User } from './types';
 import { Terminal, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 
@@ -34,20 +34,11 @@ export default function App() {
   const [selectedVmId, setSelectedVmId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
 
-  // Authentication & Users State
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem('migration_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [authToken, setAuthToken] = useState<string | null>(() => {
-    return localStorage.getItem('migration_auth_token') || null;
-  });
+  // Authentication & Users State (Starts unauthenticated unless a valid session exists in localStorage)
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   // Modals
   const [isSpreadsheetModalOpen, setIsSpreadsheetModalOpen] = useState(false);
@@ -63,38 +54,28 @@ export default function App() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Verify auth session or auto-initialize admin
+  // Verify stored session on initial page load (NO auto-login to admin!)
   useEffect(() => {
     const initAuth = async () => {
-      if (!authToken) {
-        try {
-          const res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: 'admin', password: 'admin123' }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setCurrentUser(data.user);
-            setAuthToken(data.token);
-            localStorage.setItem('migration_user', JSON.stringify(data.user));
-            localStorage.setItem('migration_auth_token', data.token);
-          }
-        } catch {
-          // Ignore
-        }
+      const savedToken = localStorage.getItem('migration_auth_token');
+      if (!savedToken) {
+        setAuthLoading(false);
+        setCurrentUser(null);
+        setAuthToken(null);
         return;
       }
 
       try {
         const res = await fetch('/api/auth/me', {
-          headers: { Authorization: `Bearer ${authToken}` },
+          headers: { Authorization: `Bearer ${savedToken}` },
         });
         if (res.ok) {
           const data = await res.json();
           setCurrentUser(data.user);
+          setAuthToken(savedToken);
           localStorage.setItem('migration_user', JSON.stringify(data.user));
         } else {
+          // Token expired or invalid, reset storage
           setCurrentUser(null);
           setAuthToken(null);
           localStorage.removeItem('migration_user');
@@ -102,18 +83,23 @@ export default function App() {
         }
       } catch (err) {
         console.error('Error validating auth session:', err);
+        setCurrentUser(null);
+        setAuthToken(null);
+        localStorage.removeItem('migration_user');
+        localStorage.removeItem('migration_auth_token');
+      } finally {
+        setAuthLoading(false);
       }
     };
 
     initAuth();
-  }, [authToken]);
+  }, []);
 
   const handleLoginSuccess = (user: User, token: string) => {
     setCurrentUser(user);
     setAuthToken(token);
     localStorage.setItem('migration_user', JSON.stringify(user));
     localStorage.setItem('migration_auth_token', token);
-    setIsLoginModalOpen(false);
     showToast(`Signed in as ${user.displayName || user.username} (${user.role})`, 'success');
   };
 
@@ -159,6 +145,8 @@ export default function App() {
 
   // Real-Time Server-Sent Events (SSE) listener
   useEffect(() => {
+    if (!currentUser) return;
+
     fetchMigrations();
     fetchLogs();
 
@@ -223,8 +211,9 @@ export default function App() {
 
     return () => {
       eventSource.close();
+      setConnected(false);
     };
-  }, [fetchMigrations, fetchLogs]);
+  }, [currentUser, fetchMigrations, fetchLogs]);
 
   // Recalculate stats whenever vms change locally
   useEffect(() => {
@@ -457,6 +446,21 @@ export default function App() {
 
   const selectedVm = vms.find((v) => v.id === selectedVmId) || null;
 
+  // Render session loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 gap-3">
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-mono text-slate-500 tracking-widest uppercase">Initializing Session...</p>
+      </div>
+    );
+  }
+
+  // If not logged in, render the dedicated LoginPage (no default to system administrator!)
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       {/* Toast */}
@@ -485,7 +489,7 @@ export default function App() {
         vmCount={vms.length}
         currentUser={currentUser}
         onOpenUsersModal={() => setIsUserManagementOpen(true)}
-        onLoginClick={() => setIsLoginModalOpen(true)}
+        onLoginClick={() => {}}
         onLogoutClick={handleLogout}
       />
 
@@ -557,16 +561,6 @@ export default function App() {
           onClose={() => setIsUserManagementOpen(false)}
           currentUser={currentUser}
           token={authToken}
-        />
-      )}
-
-      {/* Sign In Modal */}
-      {isLoginModalOpen && (
-        <LoginModal
-          isOpen={isLoginModalOpen}
-          allowClose={true}
-          onClose={() => setIsLoginModalOpen(false)}
-          onLoginSuccess={handleLoginSuccess}
         />
       )}
 
