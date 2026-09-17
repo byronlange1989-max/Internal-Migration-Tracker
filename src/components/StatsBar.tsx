@@ -1,6 +1,6 @@
 import React from 'react';
 import { MigrationStats } from '../types';
-import { CheckCircle2, HardDrive, Cpu, Activity, ArrowRight, Layers } from 'lucide-react';
+import { CheckCircle2, HardDrive, Cpu, ArrowRight, Layers } from 'lucide-react';
 
 interface StatsBarProps {
   stats: MigrationStats;
@@ -17,7 +17,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({ stats }) => {
     : 0;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
       {/* 1. VMs Needing Migration (vCenter -> Virtuozzo) */}
       <div className="bg-gradient-to-b from-indigo-950/40 to-slate-900/80 border border-indigo-500/40 rounded-xl p-3.5 backdrop-blur-sm shadow-sm relative overflow-hidden">
         <div className="flex items-center justify-between text-indigo-300 mb-1.5">
@@ -129,26 +129,6 @@ export const StatsBar: React.FC<StatsBarProps> = ({ stats }) => {
             style={{ width: `${storagePercentage}%` }}
           />
         </div>
-      </div>
-
-      {/* 6. Active Pipeline & Live Speed */}
-      <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl p-3.5 backdrop-blur-sm shadow-sm">
-        <div className="flex items-center justify-between text-slate-400 mb-1.5">
-          <span className="text-xs font-medium uppercase tracking-wider">Active Stream</span>
-          <Activity className="w-4 h-4 text-blue-400 animate-pulse" />
-        </div>
-        <div className="flex items-baseline space-x-2">
-          <span className="text-2xl sm:text-3xl font-bold tracking-tight text-blue-400">
-            {stats.inProgressVms}
-          </span>
-          <span className="text-xs text-slate-400">in-flight</span>
-        </div>
-        <p className="text-[11px] text-slate-400 mt-2 truncate">
-          Live Speed:{' '}
-          <span className="text-cyan-400 font-mono font-medium">
-            {stats.activeTransferSpeedMbps.toFixed(1)} MB/s
-          </span>
-        </p>
       </div>
     </div>
   );

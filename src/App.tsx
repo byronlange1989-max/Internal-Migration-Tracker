@@ -14,11 +14,17 @@ export default function App() {
   const [stats, setStats] = useState<MigrationStats>({
     totalVms: 0,
     completedVms: 0,
+    vmsNeedingMigration: 0,
     inProgressVms: 0,
     failedVms: 0,
     notStartedVms: 0,
+    totalVcpu: 0,
+    totalRamGb: 0,
+    remainingVcpu: 0,
+    remainingRamGb: 0,
     totalDiskGb: 0,
     migratedDiskGb: 0,
+    remainingDiskGb: 0,
     activeTransferSpeedMbps: 0,
     completionPercentage: 0,
   });
@@ -145,27 +151,52 @@ export default function App() {
     let totalDisk = 0;
     let migratedDisk = 0;
     let speed = 0;
+    let totalVcpu = 0;
+    let totalRamGb = 0;
+    let remainingVcpu = 0;
+    let remainingRamGb = 0;
 
     for (const v of vms) {
-      totalDisk += v.diskGb || 0;
+      const disk = v.diskGb || 0;
+      const vcpu = Number(v.vcpu) || 2;
+      const ram = Number(v.ramGb) || 4;
+
+      totalDisk += disk;
       migratedDisk += v.transferredGb || 0;
-      if (v.status === 'completed') completed++;
-      else if (v.status === 'failed') failed++;
-      else if (['not_started', 'scheduled'].includes(v.status)) notStarted++;
-      else {
-        inProgress++;
-        speed += v.speedMbps || 0;
+      totalVcpu += vcpu;
+      totalRamGb += ram;
+
+      if (v.status === 'completed') {
+        completed++;
+      } else {
+        remainingVcpu += vcpu;
+        remainingRamGb += ram;
+
+        if (v.status === 'failed') {
+          failed++;
+        } else if (['not_started', 'scheduled'].includes(v.status)) {
+          notStarted++;
+        } else {
+          inProgress++;
+          speed += v.speedMbps || 0;
+        }
       }
     }
 
     setStats({
       totalVms: total,
       completedVms: completed,
+      vmsNeedingMigration: Math.max(0, total - completed),
       inProgressVms: inProgress,
       failedVms: failed,
       notStartedVms: notStarted,
+      totalVcpu,
+      totalRamGb,
+      remainingVcpu,
+      remainingRamGb,
       totalDiskGb: Math.round(totalDisk * 10) / 10,
       migratedDiskGb: Math.round(migratedDisk * 10) / 10,
+      remainingDiskGb: Math.max(0, Math.round((totalDisk - migratedDisk) * 10) / 10),
       activeTransferSpeedMbps: Math.round(speed * 10) / 10,
       completionPercentage: total > 0 ? Math.round((completed / total) * 100) : 0,
     });

@@ -51,7 +51,16 @@ export function convertRamToGb(val: any): number {
     const gb = num / 1024;
     return Math.abs(gb - Math.round(gb)) < 0.05 ? Math.round(gb) : Math.round(gb * 10) / 10;
   }
-  return Math.round(num);
+  return Math.round(num * 10) / 10;
+}
+
+// Conversion helper: parse vCPU count
+export function parseVcpu(val: any): number {
+  if (val === undefined || val === null || val === '') return 2;
+  if (typeof val === 'number') return Math.max(1, Math.round(val));
+  const cleanStr = String(val).replace(/,/g, '').replace(/[^\d.]/g, '').trim();
+  const num = parseFloat(cleanStr);
+  return isNaN(num) || num <= 0 ? 2 : Math.max(1, Math.round(num));
 }
 
 function loadStoredMigrations(): MigrationVM[] {
@@ -62,8 +71,9 @@ function loadStoredMigrations(): MigrationVM[] {
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map((vm: any) => ({
           ...vm,
-          diskGb: vm.diskGb >= 10240 ? Math.round((vm.diskGb / 1024) * 10) / 10 : vm.diskGb,
-          ramGb: vm.ramGb >= 512 ? Math.round((vm.ramGb / 1024) * 10) / 10 : vm.ramGb,
+          vcpu: parseVcpu(vm.vcpu),
+          ramGb: convertRamToGb(vm.ramGb),
+          diskGb: vm.diskGb >= 10240 ? Math.round((vm.diskGb / 1024) * 10) / 10 : (vm.diskGb || 50),
         }));
       }
     }
@@ -132,8 +142,8 @@ function calculateStats(): MigrationStats {
 
   for (const vm of migrations) {
     const disk = vm.diskGb || 0;
-    const vcpu = vm.vcpu || 0;
-    const ram = vm.ramGb || 0;
+    const vcpu = parseVcpu(vm.vcpu);
+    const ram = convertRamToGb(vm.ramGb);
 
     totalDiskGb += disk;
     migratedDiskGb += vm.transferredGb || 0;
@@ -282,7 +292,7 @@ app.post('/api/migrations', (req, res) => {
     sourceDatacenter: body.sourceDatacenter || 'Datacenter-1',
     sourceHost: body.sourceHost || 'esxi-host.local',
     sourceDatastore: body.sourceDatastore || 'datastore1',
-    vcpu: Number(body.vcpu) || 2,
+    vcpu: parseVcpu(body.vcpu),
     ramGb: convertRamToGb(body.ramGb),
     diskGb: convertStorageToGb(body.diskGb, body.diskUnit === 'mib'),
     osType: body.osType || 'Linux',
@@ -326,6 +336,7 @@ app.post('/api/migrations/bulk', (req, res) => {
   const newItems: MigrationVM[] = vms.map((v, index) => {
     const rawDisk = v.diskGb ?? v.diskMib ?? v['Storage (MiB)'] ?? v['Capacity MiB'] ?? v['Provisioned MB'] ?? v['Storage MB'] ?? v['Disk (GB)'] ?? v['Disk Size'] ?? v['Disk'];
     const rawRam = v.ramGb ?? v.ramMb ?? v['RAM (GB)'] ?? v['RAM (MB)'] ?? v['Memory'] ?? v['RAM'];
+    const rawVcpu = v.vcpu ?? v['vCPU'] ?? v['CPU'] ?? v['vCPUs'] ?? v['Cores'] ?? v['Num CPU'] ?? v['CPUs'] ?? v['Compute: vCPU'];
 
     return {
       id: v.id || `vm-imported-${Date.now()}-${index}`,
@@ -334,7 +345,7 @@ app.post('/api/migrations/bulk', (req, res) => {
       sourceDatacenter: (v.sourceDatacenter || v['Datacenter'] || 'DC1').toString(),
       sourceHost: (v.sourceHost || v['ESXi Host'] || v['Source Host'] || 'esxi.local').toString(),
       sourceDatastore: (v.sourceDatastore || v['Datastore'] || 'datastore1').toString(),
-      vcpu: Number(v.vcpu || v['vCPU'] || v['CPU'] || 2),
+      vcpu: parseVcpu(rawVcpu),
       ramGb: convertRamToGb(rawRam),
       diskGb: convertStorageToGb(rawDisk, isMibStorage || v.storageUnit === 'mib'),
       osType: (v.osType || v['OS'] || v['Operating System'] || 'Linux').toString(),
@@ -539,6 +550,9 @@ app.patch('/api/migrations/:id', (req, res) => {
   }
 
   const updates = { ...req.body };
+  if (updates.vcpu !== undefined) {
+    updates.vcpu = parseVcpu(updates.vcpu);
+  }
   if (updates.diskGb !== undefined) {
     updates.diskGb = convertStorageToGb(updates.diskGb, updates.diskUnit === 'mib');
   }

@@ -83,6 +83,15 @@ export const SpreadsheetModal: React.FC<SpreadsheetModalProps> = ({
     return Math.round(num * 10) / 10;
   };
 
+  // Helper to parse and convert vCPU count safely
+  const parseVcpuValue = (val: any): number => {
+    if (val === undefined || val === null || val === '') return 2;
+    if (typeof val === 'number') return Math.max(1, Math.round(val));
+    const clean = String(val).replace(/,/g, '').replace(/[^\d.]/g, '').trim();
+    const num = parseFloat(clean);
+    return isNaN(num) || num <= 0 ? 2 : Math.max(1, Math.round(num));
+  };
+
   // Helper to parse and convert RAM (auto-converts if in MB >= 512)
   const parseRamValue = (val: any): number => {
     if (val === undefined || val === null || val === '') return 4;
@@ -98,7 +107,7 @@ export const SpreadsheetModal: React.FC<SpreadsheetModalProps> = ({
       const gb = num / 1024;
       return Math.abs(gb - Math.round(gb)) < 0.05 ? Math.round(gb) : Math.round(gb * 10) / 10;
     }
-    return Math.round(num);
+    return Math.round(num * 10) / 10;
   };
 
   // Auto-detect columns based on header strings
@@ -118,8 +127,8 @@ export const SpreadsheetModal: React.FC<SpreadsheetModalProps> = ({
     newMapping.sourceCluster = findMatch(['cluster', 'vcentercluster', 'sourcecluster', 'vcenter']);
     newMapping.sourceHost = findMatch(['sourcehost', 'esxihost', 'esxi', 'host']);
     newMapping.sourceDatastore = findMatch(['sourcedatastore', 'datastore', 'sourcepool', 'storage']);
-    newMapping.vcpu = findMatch(['vcpu', 'cpu', 'cpus', 'cores', 'vcpus']);
-    newMapping.ramGb = findMatch(['memorymb', 'rammb', 'memory_mb', 'ram_mb', 'ramgb', 'ram', 'memorygb', 'memory', 'ram_gb']);
+    newMapping.vcpu = findMatch(['vcpu', 'cpu', 'cpus', 'cores', 'vcpus', 'numcpu', 'cpucount', 'processors', 'processor', 'computevcpu', 'compute']);
+    newMapping.ramGb = findMatch(['memorymb', 'rammb', 'memory_mb', 'ram_mb', 'ramgb', 'ram', 'memorygb', 'memory', 'ram_gb', 'memsize', 'mem', 'memorysize', 'provisionedmemory', 'computememory', 'computeram', 'memorysizemb', 'memmb']);
     newMapping.diskGb = findMatch([
       'provisionedmib', 'capacitymib', 'storagemib', 'diskmib', 'vmsizemib',
       'provisionedmb', 'capacitymb', 'storagemb', 'diskmb', 'vmsizemb',
@@ -288,7 +297,7 @@ export const SpreadsheetModal: React.FC<SpreadsheetModalProps> = ({
 
     const converted: Partial<MigrationVM>[] = rawRows.map((row, idx) => {
       const vmName = String(row[mapping.vmName] || `VM-${idx + 1}`).trim();
-      const vcpuVal = mapping.vcpu ? Number(row[mapping.vcpu]) || 2 : 2;
+      const vcpuVal = mapping.vcpu ? parseVcpuValue(row[mapping.vcpu]) : 2;
       const ramVal = mapping.ramGb ? parseRamValue(row[mapping.ramGb]) : 4;
       // Convert storage: storage is in MiB, convert to GB (val / 1024)
       const diskVal = mapping.diskGb ? parseStorageValue(row[mapping.diskGb], storageUnit) : 50;
