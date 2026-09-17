@@ -1,0 +1,6 @@
+{
+  "name": "vCenter to Virtuozzo VM Migration Tracker",
+  "description": "Real-time VM migration tracker and Python automation hub for migrating workloads from VMware vCenter to Virtuozzo with live spreadsheet synchronization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
