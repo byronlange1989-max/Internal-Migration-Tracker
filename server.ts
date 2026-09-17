@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
 import * as XLSX from 'xlsx';
 import { MigrationVM, MigrationLog, MigrationStats, WaveGroup } from './src/types';
@@ -91,6 +92,106 @@ function saveStoredMigrations(items: MigrationVM[]) {
   } catch (err) {
     console.error('Error saving stored migrations:', err);
   }
+}
+
+// User Accounts & Authentication Persistence
+const USERS_PATH = path.join(process.cwd(), 'server', 'storedUsers.json');
+
+export interface StoredUser {
+  id: string;
+  username: string;
+  displayName: string;
+  email?: string;
+  role: 'admin' | 'operator' | 'viewer';
+  salt: string;
+  hash: string;
+  createdAt: string;
+  lastLogin?: string | null;
+}
+
+export function hashPassword(password: string, salt?: string): { salt: string; hash: string } {
+  const actualSalt = salt || crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, actualSalt, 1000, 64, 'sha512').toString('hex');
+  return { salt: actualSalt, hash };
+}
+
+function loadStoredUsers(): StoredUser[] {
+  try {
+    if (fs.existsSync(USERS_PATH)) {
+      const data = fs.readFileSync(USERS_PATH, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('Error loading stored users:', err);
+  }
+
+  // Seed default admin accounts if no users exist
+  const adminCreds = hashPassword('admin123');
+  const ironAdminCreds = hashPassword('admin123');
+  const defaultUsers: StoredUser[] = [
+    {
+      id: 'user-admin',
+      username: 'admin',
+      displayName: 'System Administrator',
+      email: 'admin@corp.local',
+      role: 'admin',
+      salt: adminCreds.salt,
+      hash: adminCreds.hash,
+      createdAt: new Date().toISOString(),
+      lastLogin: null,
+    },
+    {
+      id: 'user-ironadmin',
+      username: 'ironadmin',
+      displayName: 'Iron Admin',
+      email: 'ironadmin@corp.local',
+      role: 'admin',
+      salt: ironAdminCreds.salt,
+      hash: ironAdminCreds.hash,
+      createdAt: new Date().toISOString(),
+      lastLogin: null,
+    },
+  ];
+
+  try {
+    fs.writeFileSync(USERS_PATH, JSON.stringify(defaultUsers, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error seeding default users:', err);
+  }
+
+  return defaultUsers;
+}
+
+function saveStoredUsers(items: StoredUser[]) {
+  try {
+    fs.writeFileSync(USERS_PATH, JSON.stringify(items, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving stored users:', err);
+  }
+}
+
+let users: StoredUser[] = loadStoredUsers();
+
+// In-Memory active sessions map: token -> session info (7 day expiry)
+const sessions = new Map<string, { userId: string; username: string; role: string; expiresAt: number }>();
+
+function getUserFromToken(token?: string): StoredUser | null {
+  if (!token) return null;
+  const session = sessions.get(token);
+  if (!session) return null;
+  if (Date.now() > session.expiresAt) {
+    sessions.delete(token);
+    return null;
+  }
+  return users.find((u) => u.id === session.userId) || null;
+}
+
+function sanitizeUser(user: StoredUser) {
+  const { salt, hash, ...safe } = user;
+  return safe;
 }
 
 // In-Memory Database (initialized with persistent stored data and converted values)
@@ -231,6 +332,211 @@ const simulationTimers = new Map<string, NodeJS.Timeout[]>();
 // ==========================================
 // API ROUTES
 // ==========================================
+
+// --- Authentication & User Management Routes ---
+
+// Login
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  const cleanUser = String(username).trim().toLowerCase();
+  const user = users.find((u) => u.username.toLowerCase() === cleanUser);
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+
+  const check = hashPassword(String(password), user.salt);
+  if (check.hash !== user.hash) {
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+
+  user.lastLogin = new Date().toISOString();
+  saveStoredUsers(users);
+
+  const token = crypto.randomBytes(32).toString('hex');
+  sessions.set(token, {
+    userId: user.id,
+    username: user.username,
+    role: user.role,
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+
+  return res.json({
+    token,
+    user: sanitizeUser(user),
+  });
+});
+
+// Current User profile verification
+app.get('/api/auth/me', (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim() || (req.headers['x-auth-token'] as string);
+  const user = getUserFromToken(token);
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  return res.json({ user: sanitizeUser(user) });
+});
+
+// Logout
+app.post('/api/auth/logout', (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim() || (req.headers['x-auth-token'] as string);
+  if (token) {
+    sessions.delete(token);
+  }
+  return res.json({ success: true });
+});
+
+// GET all users
+app.get('/api/users', (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim() || (req.headers['x-auth-token'] as string);
+  const currentUser = getUserFromToken(token);
+
+  // If user is authenticated, check admin role
+  if (currentUser && currentUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Administrator access required to view all users' });
+  }
+
+  return res.json(users.map(sanitizeUser));
+});
+
+// POST create new user
+app.post('/api/users', (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim() || (req.headers['x-auth-token'] as string);
+  const currentUser = getUserFromToken(token);
+
+  if (currentUser && currentUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Administrator access required to create users' });
+  }
+
+  const { username, displayName, email, role, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  const cleanUsername = String(username).trim().toLowerCase();
+  if (cleanUsername.length < 3) {
+    return res.status(400).json({ error: 'Username must be at least 3 characters' });
+  }
+  if (String(password).length < 4) {
+    return res.status(400).json({ error: 'Password must be at least 4 characters' });
+  }
+
+  if (users.some((u) => u.username.toLowerCase() === cleanUsername)) {
+    return res.status(400).json({ error: `User '${cleanUsername}' already exists` });
+  }
+
+  const validRole = ['admin', 'operator', 'viewer'].includes(role) ? role : 'viewer';
+  const creds = hashPassword(String(password));
+  const newUser: StoredUser = {
+    id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    username: cleanUsername,
+    displayName: String(displayName || cleanUsername).trim(),
+    email: email ? String(email).trim() : undefined,
+    role: validRole,
+    salt: creds.salt,
+    hash: creds.hash,
+    createdAt: new Date().toISOString(),
+    lastLogin: null,
+  };
+
+  users.push(newUser);
+  saveStoredUsers(users);
+
+  // Log user creation
+  logs.unshift({
+    id: `log-${Date.now()}`,
+    vmId: 'system',
+    vmName: 'SYSTEM',
+    timestamp: new Date().toISOString(),
+    level: 'info',
+    message: `New user account '${newUser.username}' (${newUser.role}) created by ${currentUser?.username || 'Admin'}.`,
+    source: 'admin',
+  });
+
+  return res.status(201).json(sanitizeUser(newUser));
+});
+
+// PATCH update user (role, display name, password)
+app.patch('/api/users/:id', (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim() || (req.headers['x-auth-token'] as string);
+  const currentUser = getUserFromToken(token);
+
+  if (currentUser && currentUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Administrator access required to modify users' });
+  }
+
+  const { id } = req.params;
+  const user = users.find((u) => u.id === id);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const { displayName, email, role, password } = req.body || {};
+  if (displayName) user.displayName = String(displayName).trim();
+  if (email !== undefined) user.email = String(email).trim();
+
+  if (role && ['admin', 'operator', 'viewer'].includes(role)) {
+    if (user.role === 'admin' && role !== 'admin') {
+      const adminCount = users.filter((u) => u.role === 'admin').length;
+      if (adminCount <= 1) {
+        return res.status(400).json({ error: 'Cannot demote the last remaining administrator' });
+      }
+    }
+    user.role = role;
+  }
+
+  if (password) {
+    if (String(password).length < 4) {
+      return res.status(400).json({ error: 'New password must be at least 4 characters' });
+    }
+    const creds = hashPassword(String(password));
+    user.salt = creds.salt;
+    user.hash = creds.hash;
+  }
+
+  saveStoredUsers(users);
+  return res.json(sanitizeUser(user));
+});
+
+// DELETE remove user
+app.delete('/api/users/:id', (req, res) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim() || (req.headers['x-auth-token'] as string);
+  const currentUser = getUserFromToken(token);
+
+  if (currentUser && currentUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Administrator access required to delete users' });
+  }
+
+  const { id } = req.params;
+  const user = users.find((u) => u.id === id);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  if (currentUser && user.id === currentUser.id) {
+    return res.status(400).json({ error: 'Cannot delete your own active account' });
+  }
+
+  if (user.role === 'admin') {
+    const adminCount = users.filter((u) => u.role === 'admin').length;
+    if (adminCount <= 1) {
+      return res.status(400).json({ error: 'Cannot delete the last remaining administrator' });
+    }
+  }
+
+  users = users.filter((u) => u.id !== id);
+  saveStoredUsers(users);
+  return res.json({ success: true, deletedId: id });
+});
 
 // Server-Sent Events (SSE) for instant real-time live monitoring
 app.get('/api/migrations/stream', (req, res) => {

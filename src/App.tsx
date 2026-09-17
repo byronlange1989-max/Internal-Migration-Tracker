@@ -6,7 +6,9 @@ import { VmDetailDrawer } from './components/VmDetailDrawer';
 import { SpreadsheetModal } from './components/SpreadsheetModal';
 import { PythonHubModal } from './components/PythonHubModal';
 import { AddVmModal } from './components/AddVmModal';
-import { MigrationVM, MigrationStats, MigrationLog } from './types';
+import { UserManagementModal } from './components/UserManagementModal';
+import { LoginModal } from './components/LoginModal';
+import { MigrationVM, MigrationStats, MigrationLog, User } from './types';
 import { Terminal, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 
 export default function App() {
@@ -32,6 +34,21 @@ export default function App() {
   const [selectedVmId, setSelectedVmId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
 
+  // Authentication & Users State
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('migration_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [authToken, setAuthToken] = useState<string | null>(() => {
+    return localStorage.getItem('migration_auth_token') || null;
+  });
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
   // Modals
   const [isSpreadsheetModalOpen, setIsSpreadsheetModalOpen] = useState(false);
   const [isPythonHubOpen, setIsPythonHubOpen] = useState(false);
@@ -44,6 +61,74 @@ export default function App() {
   const showToast = (message: string, type: 'info' | 'success' | 'warn' = 'info') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  // Verify auth session or auto-initialize admin
+  useEffect(() => {
+    const initAuth = async () => {
+      if (!authToken) {
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: 'admin', password: 'admin123' }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setCurrentUser(data.user);
+            setAuthToken(data.token);
+            localStorage.setItem('migration_user', JSON.stringify(data.user));
+            localStorage.setItem('migration_auth_token', data.token);
+          }
+        } catch {
+          // Ignore
+        }
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentUser(data.user);
+          localStorage.setItem('migration_user', JSON.stringify(data.user));
+        } else {
+          setCurrentUser(null);
+          setAuthToken(null);
+          localStorage.removeItem('migration_user');
+          localStorage.removeItem('migration_auth_token');
+        }
+      } catch (err) {
+        console.error('Error validating auth session:', err);
+      }
+    };
+
+    initAuth();
+  }, [authToken]);
+
+  const handleLoginSuccess = (user: User, token: string) => {
+    setCurrentUser(user);
+    setAuthToken(token);
+    localStorage.setItem('migration_user', JSON.stringify(user));
+    localStorage.setItem('migration_auth_token', token);
+    setIsLoginModalOpen(false);
+    showToast(`Signed in as ${user.displayName || user.username} (${user.role})`, 'success');
+  };
+
+  const handleLogout = async () => {
+    if (authToken) {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` },
+      }).catch(() => {});
+    }
+    setCurrentUser(null);
+    setAuthToken(null);
+    localStorage.removeItem('migration_user');
+    localStorage.removeItem('migration_auth_token');
+    showToast('Signed out successfully', 'info');
   };
 
   // Fetch all migrations
@@ -398,6 +483,10 @@ export default function App() {
         onOpenAddVmModal={() => setIsAddVmModalOpen(true)}
         onResetData={handleResetData}
         vmCount={vms.length}
+        currentUser={currentUser}
+        onOpenUsersModal={() => setIsUserManagementOpen(true)}
+        onLoginClick={() => setIsLoginModalOpen(true)}
+        onLogoutClick={handleLogout}
       />
 
       {/* Main Container */}
@@ -458,6 +547,26 @@ export default function App() {
           isOpen={isAddVmModalOpen}
           onClose={() => setIsAddVmModalOpen(false)}
           onAddVm={handleAddSingleVm}
+        />
+      )}
+
+      {/* User Management & Access Control Modal */}
+      {isUserManagementOpen && (
+        <UserManagementModal
+          isOpen={isUserManagementOpen}
+          onClose={() => setIsUserManagementOpen(false)}
+          currentUser={currentUser}
+          token={authToken}
+        />
+      )}
+
+      {/* Sign In Modal */}
+      {isLoginModalOpen && (
+        <LoginModal
+          isOpen={isLoginModalOpen}
+          allowClose={true}
+          onClose={() => setIsLoginModalOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
         />
       )}
 

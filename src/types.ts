@@ -104,3 +104,20 @@ export interface ColumnMappingConfig {
   priority?: string;
   assignedAdmin?: string;
 }
+
+export type UserRole = 'admin' | 'operator' | 'viewer';
+
+export interface User {
+  id: string;
+  username: string;
+  displayName: string;
+  email?: string;
+  role: UserRole;
+  createdAt: string;
+  lastLogin?: string | null;
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+}

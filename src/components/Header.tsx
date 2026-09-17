@@ -4,7 +4,12 @@ import {
   RotateCcw,
   Radio,
   Plus,
+  Users,
+  LogOut,
+  LogIn,
+  User as UserIcon,
 } from 'lucide-react';
+import { User } from '../types';
 
 interface HeaderProps {
   connected: boolean;
@@ -15,12 +20,20 @@ interface HeaderProps {
   onExportXlsx?: () => void;
   onDiscardAll?: () => void;
   vmCount?: number;
+  currentUser: User | null;
+  onOpenUsersModal: () => void;
+  onLoginClick: () => void;
+  onLogoutClick: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   connected,
   onOpenAddVmModal,
   onResetData,
+  currentUser,
+  onOpenUsersModal,
+  onLoginClick,
+  onLogoutClick,
 }) => {
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-30 shadow-md">
@@ -81,6 +94,56 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <RotateCcw className="w-4 h-4" />
             </button>
+
+            {/* User & Access Controls */}
+            <div className="flex items-center gap-2 border-l border-slate-800 pl-2.5 ml-1">
+              {currentUser ? (
+                <div className="flex items-center gap-2">
+                  {/* Manage Users Button (Admin Only) */}
+                  {currentUser.role === 'admin' && (
+                    <button
+                      id="btn-manage-users"
+                      onClick={onOpenUsersModal}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95"
+                      title="Manage Users & Access"
+                    >
+                      <Users className="w-4 h-4 text-indigo-400" />
+                      <span>Users</span>
+                    </button>
+                  )}
+
+                  {/* User Profile Badge */}
+                  <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/80 text-xs">
+                    <div className="w-5 h-5 rounded-md bg-indigo-600/30 text-indigo-300 flex items-center justify-center font-bold text-[10px]">
+                      {currentUser.displayName ? currentUser.displayName[0].toUpperCase() : currentUser.username[0].toUpperCase()}
+                    </div>
+                    <span className="text-slate-200 font-medium max-w-[120px] truncate">
+                      {currentUser.displayName || currentUser.username}
+                    </span>
+                    <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      {currentUser.role}
+                    </span>
+                  </div>
+
+                  {/* Sign Out Button */}
+                  <button
+                    onClick={onLogoutClick}
+                    title="Sign Out"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition active:scale-95"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={onLoginClick}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 transition active:scale-95"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Sign In</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

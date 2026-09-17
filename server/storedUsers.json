@@ -1,0 +1,24 @@
+[
+  {
+    "id": "user-admin",
+    "username": "admin",
+    "displayName": "System Administrator",
+    "email": "admin@corp.local",
+    "role": "admin",
+    "salt": "f1826345eb4e60ea2886670de1979e19",
+    "hash": "ef1035d546ca20deab09be21c4c070cb772fd10029dddacad806164462c281a6436f54c5a046c016860db31f4ac78cb5ef4d42edc86894896def1d6319e3dc65",
+    "createdAt": "2026-09-17T09:34:58.989Z",
+    "lastLogin": "2026-09-17T09:35:10.602Z"
+  },
+  {
+    "id": "user-ironadmin",
+    "username": "ironadmin",
+    "displayName": "Iron Admin",
+    "email": "ironadmin@corp.local",
+    "role": "admin",
+    "salt": "79725263558967fd7b2ee8f4d5531c7b",
+    "hash": "64de17cc2028016e1a6715121c34d64fdad7d941b90bd0157512506f5f391a00fa632afe2e256d98cb1093c2e931d672d9d786e89d3ecde7780ce6fed7b81090",
+    "createdAt": "2026-09-17T09:34:58.989Z",
+    "lastLogin": null
+  }
+]
