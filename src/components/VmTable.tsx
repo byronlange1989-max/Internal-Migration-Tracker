@@ -63,9 +63,9 @@ export const VmTable: React.FC<VmTableProps> = ({
   // Compute summary aggregates for header
   const vmsNeedingMigrationCount = vms.filter((v) => v.status !== 'completed').length;
   const vmsCompletedCount = vms.filter((v) => v.status === 'completed').length;
-  const totalVcpuCount = vms.reduce((acc, v) => acc + (v.vcpu || 0), 0);
-  const totalRamGbCount = vms.reduce((acc, v) => acc + (v.ramGb || 0), 0);
-  const totalDiskGbCount = vms.reduce((acc, v) => acc + (v.diskGb || 0), 0);
+  const totalVcpuCount = vms.reduce((acc, v) => acc + (Number(v.vcpu) > 0 ? Number(v.vcpu) : 2), 0);
+  const totalRamGbCount = vms.reduce((acc, v) => acc + (Number(v.ramGb) > 0 ? Number(v.ramGb) : 4), 0);
+  const totalDiskGbCount = vms.reduce((acc, v) => acc + (Number(v.diskGb) > 0 ? Number(v.diskGb) : 50), 0);
 
   // Filtered & Sorted
   const filtered = vms.filter((vm) => {
@@ -283,29 +283,6 @@ export const VmTable: React.FC<VmTableProps> = ({
               {f.label}
             </button>
           ))}
-
-          {vms.length > 0 && (
-            <div className="flex items-center gap-1 ml-2 border-l border-slate-800 pl-2">
-              <button
-                onClick={onOpenSpreadsheetModal}
-                title="Upload a new spreadsheet (will discard old workloads)"
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 transition active:scale-95"
-              >
-                <UploadCloud className="w-3.5 h-3.5" />
-                <span>Upload New</span>
-              </button>
-
-              {onDiscardAll && (
-                <button
-                  onClick={onDiscardAll}
-                  title="Discard all current workloads"
-                  className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition active:scale-95"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          )}
         </div>
       </div>
 

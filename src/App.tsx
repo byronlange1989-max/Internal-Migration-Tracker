@@ -395,49 +395,13 @@ export default function App() {
       {/* Header */}
       <Header
         connected={connected}
-        onOpenSpreadsheetModal={handleOpenSpreadsheetWithDiscard}
-        onOpenPythonHub={() => setIsPythonHubOpen(true)}
         onOpenAddVmModal={() => setIsAddVmModalOpen(true)}
         onResetData={handleResetData}
-        onExportXlsx={handleExportXlsx}
-        onDiscardAll={handleDiscardAllWorkloads}
         vmCount={vms.length}
       />
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Top Highlight Banner: Explains Spreadsheet & Python Workflow */}
-        <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-              <span>VM Migration Execution &amp; Telemetry Hub</span>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                vCenter 7/8 → Virtuozzo VHS
-              </span>
-            </h2>
-            <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-              Upload your migration spreadsheet (.xlsx or .csv), auto-map columns, track cutover progress, and execute real-time telemetry migrations via Python automation.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={handleOpenSpreadsheetWithDiscard}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 transition active:scale-95"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Upload New Spreadsheet</span>
-            </button>
-            <button
-              onClick={() => setIsPythonHubOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 transition active:scale-95"
-            >
-              <Terminal className="w-4 h-4" />
-              <span>Get Python Migrator Script</span>
-            </button>
-          </div>
-        </div>
-
         {/* Global Statistics Bar */}
         <StatsBar stats={stats} />
 

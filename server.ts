@@ -57,7 +57,9 @@ export function convertRamToGb(val: any): number {
 // Conversion helper: parse vCPU count
 export function parseVcpu(val: any): number {
   if (val === undefined || val === null || val === '') return 2;
-  if (typeof val === 'number') return Math.max(1, Math.round(val));
+  if (typeof val === 'number') {
+    return isNaN(val) || val <= 0 ? 2 : Math.max(1, Math.round(val));
+  }
   const cleanStr = String(val).replace(/,/g, '').replace(/[^\d.]/g, '').trim();
   const num = parseFloat(cleanStr);
   return isNaN(num) || num <= 0 ? 2 : Math.max(1, Math.round(num));
@@ -93,6 +95,10 @@ function saveStoredMigrations(items: MigrationVM[]) {
 
 // In-Memory Database (initialized with persistent stored data and converted values)
 let migrations: MigrationVM[] = loadStoredMigrations();
+if (migrations.length > 0) {
+  // Ensure the file on disk is also normalized with valid vcpu and ramGb
+  saveStoredMigrations(migrations);
+}
 let logs: MigrationLog[] = [
   {
     id: 'log-init',
@@ -248,7 +254,11 @@ app.get('/api/migrations/stream', (req, res) => {
 // GET list of migrations
 app.get('/api/migrations', (req, res) => {
   const { wave, status, search } = req.query;
-  let filtered = [...migrations];
+  let filtered = migrations.map((vm) => ({
+    ...vm,
+    vcpu: parseVcpu(vm.vcpu),
+    ramGb: convertRamToGb(vm.ramGb),
+  }));
 
   if (wave && typeof wave === 'string') {
     filtered = filtered.filter((vm) => vm.wave.toLowerCase() === wave.toLowerCase());

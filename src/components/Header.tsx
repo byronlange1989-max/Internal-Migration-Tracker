@@ -1,36 +1,26 @@
 import React from 'react';
 import {
   Server,
-  FileSpreadsheet,
-  Terminal,
-  Download,
   RotateCcw,
   Radio,
   Plus,
-  Zap,
-  Trash2,
 } from 'lucide-react';
 
 interface HeaderProps {
   connected: boolean;
-  onOpenSpreadsheetModal: () => void;
-  onOpenPythonHub: () => void;
+  onOpenSpreadsheetModal?: () => void;
+  onOpenPythonHub?: () => void;
   onOpenAddVmModal: () => void;
   onResetData: () => void;
-  onExportXlsx: () => void;
+  onExportXlsx?: () => void;
   onDiscardAll?: () => void;
   vmCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   connected,
-  onOpenSpreadsheetModal,
-  onOpenPythonHub,
   onOpenAddVmModal,
   onResetData,
-  onExportXlsx,
-  onDiscardAll,
-  vmCount = 0,
 }) => {
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-30 shadow-md">
@@ -65,65 +55,21 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               </div>
               <p className="text-xs text-slate-400">
-                VM Workload Migration Hub &amp; Python Automation Monitor
+                VM Workload Migration Tracker
               </p>
             </div>
           </div>
 
           {/* Action Toolbar */}
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Upload Spreadsheet */}
-            <button
-              id="btn-upload-spreadsheet"
-              onClick={onOpenSpreadsheetModal}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm hover:shadow active:scale-95"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Upload New Spreadsheet</span>
-            </button>
-
-            {/* Discard Old Workloads */}
-            {onDiscardAll && vmCount > 0 && (
-              <button
-                id="btn-discard-workloads"
-                onClick={onDiscardAll}
-                title="Discard all current workloads from tracker"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 transition active:scale-95"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Discard Old</span>
-              </button>
-            )}
-
-            {/* Python Automation Hub */}
-            <button
-              id="btn-python-hub"
-              onClick={onOpenPythonHub}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm hover:shadow active:scale-95"
-            >
-              <Terminal className="w-4 h-4" />
-              <span>Python Scripts &amp; API</span>
-            </button>
-
             {/* Add VM */}
             <button
               id="btn-add-vm"
               onClick={onOpenAddVmModal}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition active:scale-95 shadow-sm"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add VM</span>
-            </button>
-
-            {/* Export Updated Excel */}
-            <button
-              id="btn-export-excel"
-              onClick={onExportXlsx}
-              title="Download live migration tracker as Excel spreadsheet"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95"
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden md:inline">Export Excel</span>
+              <span>Add VM</span>
             </button>
 
             {/* Reset / Sample Data */}
